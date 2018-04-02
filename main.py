@@ -1,6 +1,5 @@
 '''
 THINGS TO CHANGE
-- single _parse function
 - one shot iterator for val and test data
 - variable names in the network
 - placeholder for X,y from train, val and test and feed_dict instead in the sess.run
@@ -40,9 +39,8 @@ labels = [file.split('_')[-1].split('.')[0] for file in filenames ] #get label s
 id2label, label2id = get_label_mapping(data_path_labels) 
 labels = [label2id[label] for label in labels if label in label2id] #map label  name to id number eg  ship -> 8
 
-
 # Create input dataset and generate batches of data
-def _parse_function(filenames, labels):
+def _parse_function(filenames, labels = None):
     img_string = tf.read_file(filenames)
     img_decoded = tf.image.decode_png(img_string, channels=3)
     
@@ -51,7 +49,8 @@ def _parse_function(filenames, labels):
     
     img_decoded = tf.reshape(float_image , [-1])  #flatten
     
-    return img_decoded, labels
+    if labels == None: return img_decoded
+    else: return img_decoded, labels
 
 #Train data
 train = tf.data.Dataset.from_tensor_slices((filenames[0:42000], labels[0:42000]))
@@ -68,26 +67,12 @@ val = val.batch(3000)
 val_iterator = val.make_initializable_iterator()
 val_batch = val_iterator.get_next()
 
-
-#For test images
-def _parse_function_test(filenames):
-    img_string = tf.read_file(filenames)
-    img_decoded = tf.image.decode_png(img_string, channels=3)
-    
-    #Reserved for image augmentation
-    float_image = tf.image.per_image_standardization(img_decoded)
-    
-    img_decoded = tf.reshape(float_image , [-1])  #flatten
-    
-    return img_decoded
-
 filenames_test = [file_t for file_t in glob.glob(data_path_test + '*/*')]  
 filenames_test.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
 
-
 #For test data
 data_test = tf.data.Dataset.from_tensor_slices(filenames_test)
-data_test = data_test.map(_parse_function_test)
+data_test = data_test.map(_parse_function)
 data_test = data_test.batch(5000)
 test_iterator = data_test.make_initializable_iterator()
 X_t = test_iterator.get_next() 
@@ -251,7 +236,6 @@ with tf.Session() as sess:
                 val_acc = sess.run(val_accuracy)
                 print("Epoch {}    Loss: {:,.4f}    Train Accuracy: {:,.2f}    Val Accuracy: {:,.2f}    Time: {:,.2f}"         
                       .format(epochCount, tr_loss, tr_acc, val_acc, time.time() - startTime))
-               
                 epochCount += 1
                 break
                 
