@@ -14,68 +14,9 @@ N_CLASSES = 10
 BATCH_SIZE = 64
 N_EPOCHS = 150
 
-data_path_train = 'data/train'
-data_path_labels = 'data/labels.txt'
-data_path_test = 'data/test'
-
-def get_label_mapping(label_file):
-    """
-    Returns mappings of label to index and index to label
-    The input file has list of labels, each on a separate line.
-    """
-    with open(label_file, 'r') as f:
-        id2label = f.readlines()
-        id2label = [l.strip() for l in id2label]
-    label2id = {}
-    count = 0
-    for label in id2label:
-        label2id[label] = count
-        count += 1
-    return id2label, label2id
-
-
-filenames = [file for file in glob.glob(data_path_train + '*/*')]  #get all filenames
-labels = [file.split('_')[-1].split('.')[0] for file in filenames ] #get label string name eg. frog, ship...
-id2label, label2id = get_label_mapping(data_path_labels) 
-labels = [label2id[label] for label in labels if label in label2id] #map label  name to id number eg  ship -> 8
-
-# Create input dataset and generate batches of data
-def _parse_function(filenames, labels = None):
-    img_string = tf.read_file(filenames)
-    img_decoded = tf.image.decode_png(img_string, channels=3)
-    
-    #Image augmentation
-    float_image = tf.image.per_image_standardization(img_decoded)
-    
-    img_decoded = tf.reshape(float_image , [-1])  #flatten
-    
-    if labels == None: return img_decoded
-    else: return img_decoded, labels
-
-#Train data
-train = tf.data.Dataset.from_tensor_slices((filenames[0:42000], labels[0:42000]))
-train = train.map(_parse_function, num_parallel_calls = 3)
-train = train.batch(BATCH_SIZE)
-train = train.shuffle(buffer_size=2000)    #Keep lower number so that buffer filling happens faster
-train_iterator = train.make_initializable_iterator()
-train_batch = train_iterator.get_next()  #next_element is tensor of (img_train, y_train)
-
-#validation data 
-val = tf.data.Dataset.from_tensor_slices((filenames[42000:], labels[42000:]))   #validation batch
-val = val.map(_parse_function, num_parallel_calls = 3)
-val = val.batch(3000)
-val_iterator = val.make_initializable_iterator()
-val_batch = val_iterator.get_next()
-
-filenames_test = [file_t for file_t in glob.glob(data_path_test + '*/*')]  
-filenames_test.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
-
-#For test data
-data_test = tf.data.Dataset.from_tensor_slices(filenames_test)
-data_test = data_test.map(_parse_function)
-data_test = data_test.batch(5000)
-test_iterator = data_test.make_initializable_iterator()
-X_t = test_iterator.get_next() 
+train_path = 'data/train'
+labels_path = 'data/labels.txt'
+test_path = 'data/test'
 
 
 def conv_model(X, N_CLASSES, reuse, is_training):
